@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+:root {
+  --background: #05050f; /* Deep dark background */
+  --foreground: #e2e8f0;
+  
+  --neon-blue: #00f3ff;
+  --neon-purple: #bc13fe;
+  --neon-pink: #ff007f;
+  
+  --glass-bg: rgba(20, 20, 35, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-neon-blue: var(--neon-blue);
+  --color-neon-purple: var(--neon-purple);
+  --color-neon-pink: var(--neon-pink);
+  
+  --color-glass: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  min-height: 100vh;
+  /* Subtle background radial gradient */
+  background-image: radial-gradient(circle at top right, rgba(188, 19, 254, 0.1), transparent 40%),
+                    radial-gradient(circle at bottom left, rgba(0, 243, 255, 0.1), transparent 40%);
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+}
+
+.neon-text {
+  color: #fff;
+  text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px var(--neon-blue), 0 0 40px var(--neon-blue);
+}
+
+.neon-border {
+  box-shadow: 0 0 10px var(--neon-purple), inset 0 0 10px var(--neon-purple);
+  border: 1px solid var(--neon-purple);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
