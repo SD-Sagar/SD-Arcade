@@ -136,6 +136,24 @@ export default function SettingsPage() {
 
             {activeTab === 'layout' && (
               <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-white/5 p-3 rounded border border-white/10 gap-3">
+                  <span className="text-sm font-bold text-white">D-Pad Style</span>
+                  <div className="flex bg-black/50 rounded p-1 gap-1">
+                    <button 
+                      onClick={() => setConfig(prev => ({ ...prev, dpadType: 'typeA' }))}
+                      className={`px-3 py-1.5 text-xs font-bold rounded transition-colors ${config.dpadType === 'typeA' ? 'bg-[#00f3ff] text-black shadow-[0_0_10px_rgba(0,243,255,0.4)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                    >
+                      Type A (Analog)
+                    </button>
+                    <button 
+                      onClick={() => setConfig(prev => ({ ...prev, dpadType: 'typeB' }))}
+                      className={`px-3 py-1.5 text-xs font-bold rounded transition-colors ${config.dpadType === 'typeB' ? 'bg-[#bc13fe] text-white shadow-[0_0_10px_rgba(188,19,254,0.4)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                    >
+                      Type B (Cross)
+                    </button>
+                  </div>
+                </div>
+
                 <p className="text-gray-400 text-sm">Drag the control clusters directly on the preview window to reposition them.</p>
                 {['joystick', 'actionA', 'actionB', 'actionX', 'actionY', 'system', 'shoulderL', 'shoulderR'].map(group => (
                   <div key={group} className="space-y-2">

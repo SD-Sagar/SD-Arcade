@@ -196,7 +196,9 @@ export default function VirtualController({ nostalgist, className = "absolute in
         
         elements.forEach(el => {
           const btnName = el.getAttribute('data-action-btn');
-          if (btnName) newActive.add(btnName);
+          if (btnName) {
+            btnName.split(',').forEach(b => newActive.add(b));
+          }
         });
       }
 
@@ -288,15 +290,61 @@ export default function VirtualController({ nostalgist, className = "absolute in
           </button>
         </div>
 
-        {/* Joystick */}
-        <div className="absolute pointer-events-auto touch-none opacity-90" style={{ left: `${config.joystick.left}%`, top: `${config.joystick.top}%`, transform: `scale(${config.joystick.scale})` }}>
-          <Joystick 
-            size={120} 
-            baseColor="rgba(255,255,255,0.1)" 
-            stickColor="rgba(0,243,255,0.5)" 
-            move={handleJoystickMove} 
-            stop={handleJoystickStop} 
-          />
+        {/* Joystick or Classic D-Pad */}
+        <div className="absolute touch-none opacity-90 pointer-events-none" style={{ left: `${config.joystick.left}%`, top: `${config.joystick.top}%`, transform: `scale(${config.joystick.scale})`, width: '120px', height: '120px', marginLeft: '-60px', marginTop: '-60px' }}>
+          {config.dpadType === 'typeB' ? (
+            <div className="relative w-full h-full">
+              {/* Background Plate */}
+              <div className="absolute inset-[10px] bg-black/40 rounded-full border border-white/10 shadow-[inset_0_0_20px_rgba(0,0,0,0.8)]"></div>
+
+              {/* The Cross Base */}
+              <div className="absolute top-[20px] left-[40px] w-[40px] h-[80px] bg-gray-800 rounded shadow-[0_5px_15px_rgba(0,0,0,0.5)] border border-gray-600/50"></div>
+              <div className="absolute top-[40px] left-[20px] w-[80px] h-[40px] bg-gray-800 rounded shadow-[0_5px_15px_rgba(0,0,0,0.5)] border border-gray-600/50"></div>
+              
+              {/* Center Merge (hides internal borders) */}
+              <div className="absolute top-[41px] left-[41px] w-[38px] h-[38px] bg-gray-800 z-0"></div>
+              
+              {/* Center Pivot Divot */}
+              <div className="absolute top-[50px] left-[50px] w-[20px] h-[20px] rounded-full bg-gray-900/60 shadow-[inset_0_2px_5px_rgba(0,0,0,0.8)] z-0"></div>
+
+              {/* Directional Arrows (Subtle) */}
+              <div className="absolute top-[25px] left-[54px] w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[8px] border-b-gray-600/50 z-0"></div>
+              <div className="absolute bottom-[25px] left-[54px] w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-gray-600/50 z-0"></div>
+              <div className="absolute left-[25px] top-[54px] w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-[8px] border-r-gray-600/50 z-0"></div>
+              <div className="absolute right-[25px] top-[54px] w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[8px] border-l-gray-600/50 z-0"></div>
+
+              {/* Touch Zones (3x3 grid) - Now with mouse support! */}
+              <div className="absolute inset-[-10px] grid grid-cols-3 grid-rows-3 z-10 pointer-events-auto">
+                {['up,left', 'up', 'up,right', 'left', '', 'right', 'down,left', 'down', 'down,right'].map((dirs, idx) => (
+                  <div 
+                    key={idx}
+                    data-action-btn={dirs || undefined} 
+                    className="touch-none opacity-0"
+                    onPointerDown={(e) => { 
+                      if (e.pointerType === 'mouse' && dirs) dirs.split(',').forEach(d => triggerPress(d)); 
+                    }}
+                    onPointerUp={(e) => { 
+                      if (e.pointerType === 'mouse' && dirs) dirs.split(',').forEach(d => triggerRelease(d)); 
+                    }}
+                    onPointerLeave={(e) => { 
+                      if (e.pointerType === 'mouse' && dirs) dirs.split(',').forEach(d => triggerRelease(d)); 
+                    }}
+                    onContextMenu={(e) => e.preventDefault()}
+                  ></div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="pointer-events-auto">
+              <Joystick 
+                size={120} 
+                baseColor="rgba(255,255,255,0.1)" 
+                stickColor="rgba(0,243,255,0.5)" 
+                move={handleJoystickMove} 
+                stop={handleJoystickStop} 
+              />
+            </div>
+          )}
           {!isTouchDevice && (
             <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden lg:flex gap-1 pointer-events-none">
               {['up','down','left','right'].map(k => (

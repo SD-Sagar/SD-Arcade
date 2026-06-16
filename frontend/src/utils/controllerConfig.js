@@ -1,5 +1,6 @@
 export const DEFAULT_CONTROLLER_CONFIG = {
   opacity: 0.8,
+  dpadType: 'typeA', // 'typeA' = Analog Joystick, 'typeB' = Classic Cross
   joystick: { 
     left: 10, top: 60, scale: 1, 
     keys: { up: 'w', down: 's', left: 'a', right: 'd' } 
@@ -71,6 +72,7 @@ export const getControllerConfig = () => {
       actionB: mergedActionB,
       actionX: mergedActionX,
       actionY: mergedActionY,
+      dpadType: cleanParsed.dpadType || DEFAULT_CONTROLLER_CONFIG.dpadType,
       joystick: { ...DEFAULT_CONTROLLER_CONFIG.joystick, ...cleanParsed.joystick, keys: { ...DEFAULT_CONTROLLER_CONFIG.joystick.keys, ...(cleanParsed.joystick?.keys || {}) } },
       system: { ...DEFAULT_CONTROLLER_CONFIG.system, ...cleanParsed.system, keys: { ...DEFAULT_CONTROLLER_CONFIG.system.keys, ...(cleanParsed.system?.keys || {}) } },
       shoulderL: { ...DEFAULT_CONTROLLER_CONFIG.shoulderL, ...cleanParsed.shoulderL, keys: { ...DEFAULT_CONTROLLER_CONFIG.shoulderL.keys, ...(cleanParsed.shoulderL?.keys || {}) } },
