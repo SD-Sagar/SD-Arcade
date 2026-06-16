@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { getRomLocally } from '../../lib/db';
 import api from '../../lib/axios';
-import { X, Maximize, RotateCcw, Save, Trash2, Download, UploadCloud, Loader2 } from 'lucide-react';
+import { X, Maximize, RotateCcw, Save, Trash2, Download, UploadCloud, Loader2, Settings } from 'lucide-react';
 import { Nostalgist } from 'nostalgist';
 import VirtualController from '../../components/VirtualController';
 
@@ -24,6 +24,9 @@ function EmulatorView() {
   const [saveSlots, setSaveSlots] = useState([]);
   const [isSavesLoading, setIsSavesLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(null); // 'load-1', 'save-2', etc.
+
+  // Floating Menu State
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
@@ -127,6 +130,7 @@ function EmulatorView() {
     if (!nostalgistInst) return;
     nostalgistInst.pause();
     setIsSaveModalOpen(true);
+    setIsMenuOpen(false); // Close the floating menu when modal opens
     setIsSavesLoading(true);
     try {
       const { data } = await api.get(`/saves/${hash}`);
@@ -141,15 +145,6 @@ function EmulatorView() {
   const closeSaveModal = () => {
     setIsSaveModalOpen(false);
     if (nostalgistInst) nostalgistInst.resume();
-  };
-
-  const blobToBase64 = (blob) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
   };
 
   const base64ToBlob = (base64) => {
@@ -321,17 +316,30 @@ function EmulatorView() {
         </div>
       )}
 
-      <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/90 via-black/50 to-transparent z-[60] flex justify-between items-center px-4 md:px-8 opacity-100 lg:opacity-0 lg:hover:opacity-100 transition-opacity pointer-events-none">
-        <button onClick={handleExit} className="p-2 bg-black/60 rounded-full text-white hover:text-red-400 hover:bg-black/90 transition-all flex items-center gap-2 pointer-events-auto shadow-lg backdrop-blur-md border border-white/10">
-          <X className="w-5 h-5" /> <span className="font-bold hidden sm:inline">Exit</span>
-        </button>
+      {/* Floating Action Menu */}
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 z-[60] flex flex-col gap-3 items-center pointer-events-none">
         
-        <button onClick={openSaveModal} className="px-6 py-2 bg-black/60 rounded-full text-[#00f3ff] hover:bg-black/90 transition-all flex items-center gap-2 pointer-events-auto shadow-[0_0_15px_rgba(0,243,255,0.2)] backdrop-blur-md border border-[#00f3ff]/50 font-black tracking-widest uppercase">
-          <Save className="w-5 h-5" /> Save State
-        </button>
+        {/* Dropdown Options */}
+        <div className={`flex flex-col gap-3 transition-all duration-300 origin-bottom ${isMenuOpen ? 'scale-100 opacity-100 pointer-events-auto translate-y-0' : 'scale-75 opacity-0 pointer-events-none translate-y-4'}`}>
+          <button onClick={toggleFullscreen} className="p-3 md:p-4 bg-black/60 rounded-full text-white hover:text-[#00f3ff] hover:bg-black/90 transition-all shadow-lg backdrop-blur-md border border-white/10 group relative" title="Fullscreen">
+            <Maximize className="w-5 h-5 md:w-6 md:h-6" />
+          </button>
+          
+          <button onClick={openSaveModal} className="p-3 md:p-4 bg-black/60 rounded-full text-[#00f3ff] hover:bg-black/90 transition-all shadow-[0_0_15px_rgba(0,243,255,0.2)] backdrop-blur-md border border-[#00f3ff]/50 group relative" title="Save State">
+            <Save className="w-5 h-5 md:w-6 md:h-6" />
+          </button>
+          
+          <button onClick={handleExit} className="p-3 md:p-4 bg-black/60 rounded-full text-white hover:text-red-400 hover:bg-black/90 transition-all shadow-lg backdrop-blur-md border border-white/10 group relative" title="Exit">
+            <X className="w-5 h-5 md:w-6 md:h-6" />
+          </button>
+        </div>
 
-        <button onClick={toggleFullscreen} className="p-2 bg-black/60 rounded-full text-white hover:text-[#00f3ff] hover:bg-black/90 transition-all flex items-center gap-2 pointer-events-auto shadow-lg backdrop-blur-md border border-white/10">
-          <Maximize className="w-5 h-5" /> <span className="font-bold hidden sm:inline">Fullscreen</span>
+        {/* Toggle Button */}
+        <button 
+          onClick={() => setIsMenuOpen(!isMenuOpen)} 
+          className="p-3 md:p-4 bg-gray-800/80 rounded-full text-white hover:text-[#00f3ff] hover:bg-gray-900 transition-all pointer-events-auto shadow-2xl backdrop-blur-md border border-white/20 mt-1"
+        >
+          <Settings className={`w-6 h-6 md:w-8 md:h-8 transition-transform duration-300 ${isMenuOpen ? 'rotate-90 text-[#00f3ff]' : ''}`} />
         </button>
       </div>
 

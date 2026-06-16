@@ -18,21 +18,23 @@ export default function Navbar() {
   if (!isAuthenticated) return null;
 
   return (
-    <nav className="glass-card border-x-0 border-t-0 rounded-none px-6 py-4 mb-8 flex justify-between items-center">
-      <Link href="/dashboard">
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tighter whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r from-[#00f3ff] to-[#bc13fe] drop-shadow-[0_0_10px_rgba(188,19,254,0.5)]">
+    <nav className="glass-card border-x-0 border-t-0 rounded-none px-3 sm:px-6 py-4 mb-8 flex justify-between items-center gap-2">
+      <Link href="/dashboard" className="shrink-0">
+        <h1 className="text-lg sm:text-3xl font-black tracking-tighter whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r from-[#00f3ff] to-[#bc13fe] drop-shadow-[0_0_10px_rgba(188,19,254,0.5)]">
           SD-Arcade
         </h1>
       </Link>
       
-      <div className="flex items-center gap-6">
-        <span className="text-gray-300 font-medium">Player: <span className="text-[#00f3ff]">{user?.username}</span></span>
-        <Link href="/settings" className="px-4 py-2 text-sm border border-white/20 rounded-lg hover:bg-white/10 transition-colors">
+      <div className="flex items-center gap-2 sm:gap-6">
+        <span className="text-gray-300 font-medium text-xs sm:text-base hidden min-[400px]:inline whitespace-nowrap">
+          Player: <span className="text-[#00f3ff]">{user?.username}</span>
+        </span>
+        <Link href="/settings" className="px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm border border-white/20 rounded-lg hover:bg-white/10 transition-colors whitespace-nowrap">
           Settings
         </Link>
         <button 
           onClick={handleLogout}
-          className="px-4 py-2 text-sm border border-white/20 rounded-lg hover:bg-red-500/20 hover:text-red-400 transition-colors"
+          className="px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm border border-white/20 rounded-lg hover:bg-red-500/20 hover:text-red-400 transition-colors whitespace-nowrap"
         >
           Logout
         </button>
