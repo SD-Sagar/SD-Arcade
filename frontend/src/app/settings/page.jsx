@@ -211,16 +211,18 @@ export default function SettingsPage() {
               Live Layout
               {activeTab === 'layout' && <span className="text-xs bg-[#bc13fe] px-2 py-1 rounded animate-pulse">Drag Mode Active</span>}
             </h2>
-            <div 
-              ref={previewRef}
-              className="relative w-full aspect-[4/3] max-h-[600px] bg-black border border-white/20 rounded-xl overflow-hidden shadow-2xl touch-none"
-            >
-              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjEpIi8+PC9zdmc+')] opacity-50"></div>
-              
-              {/* Fake Gameplay Background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 to-purple-900 opacity-30 flex items-center justify-center pointer-events-none">
-                <p className="text-white/20 font-black text-4xl tracking-widest rotate-12">SCREEN AREA</p>
-              </div>
+            <div className="flex justify-center bg-gray-900/50 rounded-xl p-4 border border-white/5">
+              <div 
+                ref={previewRef}
+                className="relative w-full max-w-[360px] aspect-[9/16] bg-black border-[4px] border-gray-800 rounded-3xl overflow-hidden shadow-2xl touch-none"
+              >
+                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjEpIi8+PC9zdmc+')] opacity-50"></div>
+                
+                {/* Fake Gameplay Background */}
+                <div className="absolute top-0 left-0 right-0 h-[50%] bg-gradient-to-br from-indigo-900 to-purple-900 opacity-60 flex flex-col items-center justify-center pointer-events-none border-b-2 border-[#00f3ff]/30">
+                  <p className="text-white/40 font-black text-2xl tracking-widest rotate-6 mb-2">GAME SCREEN</p>
+                  <p className="text-white/20 text-xs text-center px-4">Place controls below this area for mobile portrait play.</p>
+                </div>
               
               {/* The Controller Itself */}
               <VirtualController nostalgist={null} className="absolute inset-0 z-40 pointer-events-none overflow-hidden" configOverride={config} />
@@ -238,6 +240,7 @@ export default function SettingsPage() {
                   <DraggableOverlay groupName="system" />
                 </>
               )}
+              </div>
             </div>
             <p className="text-sm text-gray-400 text-center">Your custom layout applies instantly to both mobile and desktop play.</p>
           </div>

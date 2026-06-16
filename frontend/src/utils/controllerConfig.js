@@ -35,45 +35,46 @@ export const getControllerConfig = () => {
     let mergedActionX = { ...DEFAULT_CONTROLLER_CONFIG.actionX, ...parsed.actionX };
     let mergedActionY = { ...DEFAULT_CONTROLLER_CONFIG.actionY, ...parsed.actionY };
 
-    if (parsed.actions && parsed.actions.keys) {
-      // Migrate keys
-      mergedActionA.keys = { a: parsed.actions.keys.a || mergedActionA.keys.a };
-      mergedActionB.keys = { b: parsed.actions.keys.b || mergedActionB.keys.b };
-      mergedActionX.keys = { x: parsed.actions.keys.x || mergedActionX.keys.x };
-      mergedActionY.keys = { y: parsed.actions.keys.y || mergedActionY.keys.y };
-      
-      // Attempt to approximate positions based on old unified block position,
-      // or just leave them at their new optimal defaults if they weren't individually saved.
-      if (!parsed.actionA) {
-        mergedActionA.left = parsed.actions.left + 15;
-        mergedActionA.top = parsed.actions.top + 10;
-        mergedActionA.scale = parsed.actions.scale;
-        
-        mergedActionB.left = parsed.actions.left + 5;
-        mergedActionB.top = parsed.actions.top + 25;
-        mergedActionB.scale = parsed.actions.scale;
-        
-        mergedActionX.left = parsed.actions.left + 5;
-        mergedActionX.top = parsed.actions.top - 5;
-        mergedActionX.scale = parsed.actions.scale;
-        
-        mergedActionY.left = parsed.actions.left - 5;
-        mergedActionY.top = parsed.actions.top + 10;
-        mergedActionY.scale = parsed.actions.scale;
+    // Only migrate if old 'actions' exist AND the user hasn't already saved new individual actions
+    if (parsed.actions && !parsed.actionA) {
+      if (parsed.actions.keys) {
+        mergedActionA.keys = { a: parsed.actions.keys.a || mergedActionA.keys.a };
+        mergedActionB.keys = { b: parsed.actions.keys.b || mergedActionB.keys.b };
+        mergedActionX.keys = { x: parsed.actions.keys.x || mergedActionX.keys.x };
+        mergedActionY.keys = { y: parsed.actions.keys.y || mergedActionY.keys.y };
       }
+      
+      mergedActionA.left = parsed.actions.left + 15;
+      mergedActionA.top = parsed.actions.top + 10;
+      mergedActionA.scale = parsed.actions.scale;
+      
+      mergedActionB.left = parsed.actions.left + 5;
+      mergedActionB.top = parsed.actions.top + 25;
+      mergedActionB.scale = parsed.actions.scale;
+      
+      mergedActionX.left = parsed.actions.left + 5;
+      mergedActionX.top = parsed.actions.top - 5;
+      mergedActionX.scale = parsed.actions.scale;
+      
+      mergedActionY.left = parsed.actions.left - 5;
+      mergedActionY.top = parsed.actions.top + 10;
+      mergedActionY.scale = parsed.actions.scale;
     }
+
+    // Strip 'actions' from parsed so it gets cleanly removed on next save
+    const { actions, ...cleanParsed } = parsed;
 
     return {
       ...DEFAULT_CONTROLLER_CONFIG,
-      ...parsed,
+      ...cleanParsed,
       actionA: mergedActionA,
       actionB: mergedActionB,
       actionX: mergedActionX,
       actionY: mergedActionY,
-      joystick: { ...DEFAULT_CONTROLLER_CONFIG.joystick, ...parsed.joystick, keys: { ...DEFAULT_CONTROLLER_CONFIG.joystick.keys, ...(parsed.joystick?.keys || {}) } },
-      system: { ...DEFAULT_CONTROLLER_CONFIG.system, ...parsed.system, keys: { ...DEFAULT_CONTROLLER_CONFIG.system.keys, ...(parsed.system?.keys || {}) } },
-      shoulderL: { ...DEFAULT_CONTROLLER_CONFIG.shoulderL, ...parsed.shoulderL, keys: { ...DEFAULT_CONTROLLER_CONFIG.shoulderL.keys, ...(parsed.shoulderL?.keys || {}) } },
-      shoulderR: { ...DEFAULT_CONTROLLER_CONFIG.shoulderR, ...parsed.shoulderR, keys: { ...DEFAULT_CONTROLLER_CONFIG.shoulderR.keys, ...(parsed.shoulderR?.keys || {}) } },
+      joystick: { ...DEFAULT_CONTROLLER_CONFIG.joystick, ...cleanParsed.joystick, keys: { ...DEFAULT_CONTROLLER_CONFIG.joystick.keys, ...(cleanParsed.joystick?.keys || {}) } },
+      system: { ...DEFAULT_CONTROLLER_CONFIG.system, ...cleanParsed.system, keys: { ...DEFAULT_CONTROLLER_CONFIG.system.keys, ...(cleanParsed.system?.keys || {}) } },
+      shoulderL: { ...DEFAULT_CONTROLLER_CONFIG.shoulderL, ...cleanParsed.shoulderL, keys: { ...DEFAULT_CONTROLLER_CONFIG.shoulderL.keys, ...(cleanParsed.shoulderL?.keys || {}) } },
+      shoulderR: { ...DEFAULT_CONTROLLER_CONFIG.shoulderR, ...cleanParsed.shoulderR, keys: { ...DEFAULT_CONTROLLER_CONFIG.shoulderR.keys, ...(cleanParsed.shoulderR?.keys || {}) } },
     };
   } catch (e) {
     return DEFAULT_CONTROLLER_CONFIG;

@@ -75,16 +75,23 @@ export default function VirtualController({ nostalgist, className = "absolute in
 
     const keyMap = {};
     const mapKeys = (groupKeys, groupName) => {
+      if (!groupKeys) return;
       Object.entries(groupKeys).forEach(([buttonName, keyStr]) => {
         keyMap[keyStr.toLowerCase()] = buttonName;
       });
     };
     
-    mapKeys(config.joystick.keys, 'joystick');
-    mapKeys(config.actions.keys, 'actions');
-    mapKeys(config.system.keys, 'system');
-    mapKeys(config.shoulderL.keys, 'shoulderL');
-    mapKeys(config.shoulderR.keys, 'shoulderR');
+    mapKeys(config.joystick?.keys, 'joystick');
+    mapKeys(config.system?.keys, 'system');
+    mapKeys(config.shoulderL?.keys, 'shoulderL');
+    mapKeys(config.shoulderR?.keys, 'shoulderR');
+    
+    // Support both old unified 'actions' and new independent ones
+    mapKeys(config.actions?.keys, 'actions');
+    mapKeys(config.actionA?.keys, 'actionA');
+    mapKeys(config.actionB?.keys, 'actionB');
+    mapKeys(config.actionX?.keys, 'actionX');
+    mapKeys(config.actionY?.keys, 'actionY');
 
     const handleKeyDown = (e) => {
       const key = e.key.toLowerCase();
@@ -121,7 +128,6 @@ export default function VirtualController({ nostalgist, className = "absolute in
       window.removeEventListener('keydown', handleKeyDown, true);
       window.removeEventListener('keyup', handleKeyUp, true);
       
-      // Cleanup turbo intervals on unmount
       Object.keys(turboIntervals.current).forEach(btn => {
         clearInterval(turboIntervals.current[btn]);
       });
@@ -138,18 +144,20 @@ export default function VirtualController({ nostalgist, className = "absolute in
     if (!nostalgistRef.current) return;
     const newDirections = new Set();
     
-    // Calculate true radial distance for accurate diagonals
-    const distance = Math.sqrt((e.x * e.x) + (e.y * e.y));
-    const threshold = 15; // Radial Deadzone
+    // react-joystick-component 'x' and 'y' could be pixels (e.g. 0 to 60) or normalized (0 to 1).
+    const x = e.x || 0;
+    const y = e.y || 0;
     
-    if (distance > threshold) {
-      if (e.y > threshold * 0.5) newDirections.add('up');
-      if (e.y < -threshold * 0.5) newDirections.add('down');
-      if (e.x > threshold * 0.5) newDirections.add('right');
-      if (e.x < -threshold * 0.5) newDirections.add('left');
-    }
+    // Detect if the values are normalized or pixel-based
+    const isNormalized = Math.abs(x) <= 1.5 && Math.abs(y) <= 1.5;
+    const threshold = isNormalized ? 0.3 : 10;
+    
+    if (y > threshold) newDirections.add('up');
+    if (y < -threshold) newDirections.add('down');
+    if (x > threshold) newDirections.add('right');
+    if (x < -threshold) newDirections.add('left');
 
-    // Fallback: Use direct string matching if coordinate math fails (e.g. library bugs)
+    // Fallback: Use direct string matching if coordinate math fails
     if (newDirections.size === 0 && e.direction) {
       if (e.direction === 'FORWARD') newDirections.add('up');
       if (e.direction === 'BACKWARD') newDirections.add('down');
