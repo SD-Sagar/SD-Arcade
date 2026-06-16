@@ -23,5 +23,7 @@ const saveStateSchema = new mongoose.Schema({
   timestamps: true,
 });
 
+saveStateSchema.index({ userId: 1, romHash: 1, saveSlot: 1 }, { unique: true });
+
 const SaveState = mongoose.model('SaveState', saveStateSchema);
 export default SaveState;

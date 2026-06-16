@@ -20,7 +20,9 @@ export default function Navbar() {
   return (
     <nav className="glass-card border-x-0 border-t-0 rounded-none px-6 py-4 mb-8 flex justify-between items-center">
       <Link href="/dashboard">
-        <h1 className="text-2xl font-black neon-text tracking-tighter">SD-Arcade</h1>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tighter whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r from-[#00f3ff] to-[#bc13fe] drop-shadow-[0_0_10px_rgba(188,19,254,0.5)]">
+          SD-Arcade
+        </h1>
       </Link>
       
       <div className="flex items-center gap-6">

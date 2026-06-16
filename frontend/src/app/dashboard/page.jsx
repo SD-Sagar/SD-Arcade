@@ -114,33 +114,75 @@ export default function DashboardPage() {
                   Your library is empty. Upload a ROM to start playing!
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {roms.map(rom => (
-                    <motion.div 
-                      key={rom.romHash}
-                      whileHover={{ scale: 1.02 }}
-                      className="glass-card p-4 flex flex-col justify-between"
-                    >
-                      <div>
-                        <h3 className="font-bold text-lg truncate" title={rom.gameTitle}>{rom.gameTitle}</h3>
-                        <div className="flex gap-2 text-xs text-gray-400 mt-1 mb-4">
-                          <span className="flex items-center gap-1"><Monitor className="w-3 h-3"/> {rom.platform}</span>
-                          {rom.lastPlayedAt && <span className="flex items-center gap-1"><Clock className="w-3 h-3"/> {new Date(rom.lastPlayedAt).toLocaleDateString()}</span>}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {roms.map(rom => {
+                    // Procedural colors based on hash so each cartridge looks unique
+                    const hashNum = parseInt(rom.romHash.substring(0, 8), 16);
+                    const hue1 = hashNum % 360;
+                    const hue2 = (hue1 + 40) % 360;
+                    
+                    return (
+                      <motion.div 
+                        key={rom.romHash}
+                        whileHover={{ y: -5 }}
+                        className="relative group perspective-1000"
+                      >
+                        {/* Cartridge Body */}
+                        <div className="relative bg-gradient-to-b from-gray-700 to-gray-900 border-2 border-gray-600 rounded-t-lg rounded-b-sm p-3 pb-4 shadow-[0_10px_20px_rgba(0,0,0,0.5)] flex flex-col h-full transform transition-transform duration-300 group-hover:scale-[1.02]">
+                          
+                          {/* Top Ridge Textures */}
+                          <div className="absolute top-0 left-0 right-0 h-4 flex justify-between px-4 opacity-30">
+                            {[1,2,3,4,5].map(i => <div key={i} className="w-2 h-full bg-black rounded-b-sm"></div>)}
+                          </div>
+
+                          {/* Cartridge Label Sticker */}
+                          <div 
+                            className="relative mt-4 flex-1 rounded shadow-inner p-1 overflow-hidden"
+                            style={{ background: `linear-gradient(135deg, hsl(${hue1}, 80%, 30%), hsl(${hue2}, 80%, 20%))` }}
+                          >
+                            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjEpIi8+PC9zdmc+')] opacity-20 mix-blend-overlay"></div>
+                            
+                            {/* Sticker Top Header */}
+                            <div className="bg-black/40 text-white/70 text-[10px] uppercase font-black px-2 py-0.5 flex justify-between items-center rounded-t-sm">
+                              <span>SD-Arcade System</span>
+                              <span>{rom.platform}</span>
+                            </div>
+
+                            {/* Game Title Area */}
+                            <div className="flex-1 flex items-center justify-center p-4 text-center h-24">
+                              <h3 
+                                className="font-black text-xl leading-tight text-white drop-shadow-md"
+                                style={{ textShadow: '2px 2px 0 #000' }}
+                              >
+                                {rom.gameTitle}
+                              </h3>
+                            </div>
+                            
+                            {/* Nintendo-style Seal of Quality Fake */}
+                            <div className="absolute bottom-1 right-1 w-6 h-6 rounded-full border border-yellow-500/50 flex items-center justify-center opacity-50">
+                              <div className="w-5 h-5 rounded-full border border-yellow-500 flex items-center justify-center text-[5px] text-yellow-500 font-bold text-center leading-none">SEAL<br/>OK</div>
+                            </div>
+                          </div>
+
+                          {/* Bottom Buttons Area */}
+                          <div className="flex gap-2 mt-4 pt-3 border-t border-gray-700/50">
+                            <button 
+                              onClick={() => handlePlay(rom.romHash)}
+                              className="flex-1 bg-[#00f3ff]/20 text-[#00f3ff] border border-[#00f3ff]/50 rounded py-2 flex justify-center items-center gap-2 hover:bg-[#00f3ff]/40 transition-colors text-sm font-bold whitespace-nowrap"
+                            >
+                              <Play className="w-4 h-4" /> Play
+                            </button>
+                            <Link 
+                              href={`/game?hash=${rom.romHash}`} 
+                              className="px-4 py-2 bg-gray-700 border border-gray-600 rounded text-gray-300 hover:bg-gray-600 hover:text-white transition-colors text-sm font-bold whitespace-nowrap flex items-center justify-center"
+                            >
+                              Details
+                            </Link>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => handlePlay(rom.romHash)}
-                          className="flex-1 bg-[#00f3ff]/20 text-[#00f3ff] border border-[#00f3ff]/50 rounded-lg py-2 flex justify-center items-center gap-2 hover:bg-[#00f3ff]/40 transition-colors"
-                        >
-                          <Play className="w-4 h-4" /> Play
-                        </button>
-                        <Link href={`/game?hash=${rom.romHash}`} className="px-4 py-2 bg-white/10 rounded-lg text-white hover:bg-white/20 transition-colors">
-                          Details
-                        </Link>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    );
+                  })}
                 </div>
               )}
             </div>

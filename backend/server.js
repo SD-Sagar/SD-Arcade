@@ -10,6 +10,7 @@ import { Server } from 'socket.io';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import romRoutes from './routes/romRoutes.js';
+import saveRoutes from './routes/saveRoutes.js';
 import errorHandler from './middlewares/errorHandler.js';
 
 // Connect to MongoDB
@@ -24,7 +25,8 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // Socket.io Placeholder
@@ -48,6 +50,7 @@ io.on('connection', (socket) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/roms', romRoutes);
+app.use('/api/saves', saveRoutes);
 
 import path from 'path';
 import { fileURLToPath } from 'url';

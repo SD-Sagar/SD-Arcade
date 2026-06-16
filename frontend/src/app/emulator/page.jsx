@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { getRomLocally } from '../../lib/db';
 import api from '../../lib/axios';
-import { X, Maximize, RotateCcw } from 'lucide-react';
+import { X, Maximize, RotateCcw, Save, Trash2, Download, UploadCloud, Loader2 } from 'lucide-react';
 import { Nostalgist } from 'nostalgist';
 import VirtualController from '../../components/VirtualController';
 
@@ -19,6 +19,12 @@ function EmulatorView() {
   const [nostalgistInst, setNostalgistInst] = useState(null);
   const [platform, setPlatform] = useState(null);
   
+  // Save States state
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [saveSlots, setSaveSlots] = useState([]);
+  const [isSavesLoading, setIsSavesLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null); // 'load-1', 'save-2', etc.
+
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const startTimeRef = useRef(0);
@@ -105,17 +111,120 @@ function EmulatorView() {
   };
 
   const handleExit = async () => {
-    // Save playstats before hard-reloading
     try {
       const playTimeSeconds = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      if (playTimeSeconds > 1) { // lowered from 5 to 1 to ensure it updates even for quick tests
+      if (playTimeSeconds > 1) {
         await api.put(`/roms/${hash}/play`, { playTime: playTimeSeconds });
       }
     } catch (e) {
       console.error('Failed to save play stats:', e);
     }
-    // Hard reload ensures the WebAssembly worker and AudioContext are destroyed completely
     window.location.href = '/dashboard';
+  };
+
+  // --- SAVE STATES LOGIC ---
+  const openSaveModal = async () => {
+    if (!nostalgistInst) return;
+    nostalgistInst.pause();
+    setIsSaveModalOpen(true);
+    setIsSavesLoading(true);
+    try {
+      const { data } = await api.get(`/saves/${hash}`);
+      setSaveSlots(data);
+    } catch (e) {
+      console.error('Failed to fetch saves', e);
+    } finally {
+      setIsSavesLoading(false);
+    }
+  };
+
+  const closeSaveModal = () => {
+    setIsSaveModalOpen(false);
+    if (nostalgistInst) nostalgistInst.resume();
+  };
+
+  const blobToBase64 = (blob) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const base64ToBlob = (base64) => {
+    const parts = base64.split(';base64,');
+    const contentType = parts[0].split(':')[1];
+    const raw = window.atob(parts[1]);
+    const rawLength = raw.length;
+    const uInt8Array = new Uint8Array(rawLength);
+    for (let i = 0; i < rawLength; ++i) {
+      uInt8Array[i] = raw.charCodeAt(i);
+    }
+    return new Blob([uInt8Array], { type: contentType });
+  };
+
+  const handleSaveState = async (slot) => {
+    if (!nostalgistInst) return;
+    setActionLoading(`save-${slot}`);
+    try {
+      const stateObj = await nostalgistInst.saveState();
+      const base64Data = await blobToBase64(stateObj.state);
+      
+      await api.post(`/saves/${hash}/${slot}`, { saveData: base64Data });
+      
+      // Refresh slots
+      const { data } = await api.get(`/saves/${hash}`);
+      setSaveSlots(data);
+    } catch (e) {
+      console.error('Save State Error:', e);
+      alert('Failed to save state');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleLoadState = async (slot) => {
+    if (!nostalgistInst) return;
+    setActionLoading(`load-${slot}`);
+    try {
+      const { data } = await api.get(`/saves/${hash}/${slot}`);
+      const blob = base64ToBlob(data.saveData);
+      
+      // Resume the game loop BEFORE trying to load the state!
+      closeSaveModal(); 
+      
+      // Give the emulator core a tiny ms to tick so it can process the load command
+      setTimeout(async () => {
+        try {
+          await nostalgistInst.loadState(blob);
+        } catch (loadErr) {
+          console.error('Nostalgist Load Error:', loadErr);
+          alert('Core failed to load state.');
+        }
+      }, 50);
+
+    } catch (e) {
+      console.error('Load State API Error:', e);
+      alert('Failed to fetch load state');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteState = async (slot) => {
+    if (!window.confirm('Are you sure you want to delete this save?')) return;
+    setActionLoading(`delete-${slot}`);
+    try {
+      await api.delete(`/saves/${hash}/${slot}`);
+      const { data } = await api.get(`/saves/${hash}`);
+      setSaveSlots(data);
+    } catch (e) {
+      console.error('Delete State Error:', e);
+      alert('Failed to delete state');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   if (error) {
@@ -141,12 +250,88 @@ function EmulatorView() {
         </div>
       )}
 
+      {/* Save States Modal Overlay */}
+      {isSaveModalOpen && (
+        <div className="absolute inset-0 z-[110] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-card w-full max-w-lg p-6 relative flex flex-col pointer-events-auto shadow-2xl border border-[#00f3ff]/30">
+            <button onClick={closeSaveModal} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+              <X className="w-6 h-6" />
+            </button>
+            <h2 className="text-2xl font-black mb-6 text-[#00f3ff] flex items-center gap-2">
+              <UploadCloud className="w-6 h-6" /> Cloud Saves
+            </h2>
+            
+            <div className="space-y-4">
+              {isSavesLoading ? (
+                <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-[#00f3ff]" /></div>
+              ) : (
+                [1, 2, 3].map(slotNum => {
+                  const slotData = saveSlots.find(s => s.saveSlot === slotNum);
+                  const isActioning = actionLoading?.includes(slotNum.toString());
+
+                  return (
+                    <div key={slotNum} className="flex flex-col sm:flex-row justify-between items-center bg-white/5 p-4 rounded-lg border border-white/10 hover:border-[#00f3ff]/30 transition-colors gap-4">
+                      <div className="flex-1 text-center sm:text-left">
+                        <h3 className="font-bold text-lg text-white">Slot {slotNum}</h3>
+                        <p className="text-sm text-gray-400">
+                          {slotData ? new Date(slotData.updatedAt).toLocaleString() : 'Empty Slot'}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {slotData ? (
+                          <>
+                            <button 
+                              disabled={isActioning}
+                              onClick={() => handleLoadState(slotNum)} 
+                              className="px-4 py-2 bg-[#00f3ff]/20 text-[#00f3ff] border border-[#00f3ff]/50 rounded font-bold hover:bg-[#00f3ff]/40 transition-colors flex items-center gap-2"
+                            >
+                              {actionLoading === `load-${slotNum}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Load
+                            </button>
+                            <button 
+                              disabled={isActioning}
+                              onClick={() => handleSaveState(slotNum)} 
+                              className="px-4 py-2 bg-purple-500/20 text-purple-400 border border-purple-500/50 rounded font-bold hover:bg-purple-500/40 transition-colors flex items-center gap-2"
+                            >
+                              {actionLoading === `save-${slotNum}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Overwrite
+                            </button>
+                            <button 
+                              disabled={isActioning}
+                              onClick={() => handleDeleteState(slotNum)} 
+                              className="p-2 bg-red-500/20 text-red-400 border border-red-500/50 rounded hover:bg-red-500/40 transition-colors"
+                            >
+                              {actionLoading === `delete-${slotNum}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            </button>
+                          </>
+                        ) : (
+                          <button 
+                            disabled={isActioning}
+                            onClick={() => handleSaveState(slotNum)} 
+                            className="px-6 py-2 bg-[#00f3ff]/20 text-[#00f3ff] border border-[#00f3ff]/50 rounded font-bold hover:bg-[#00f3ff]/40 transition-colors flex items-center gap-2"
+                          >
+                            {actionLoading === `save-${slotNum}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/90 via-black/50 to-transparent z-[60] flex justify-between items-center px-4 md:px-8 opacity-100 lg:opacity-0 lg:hover:opacity-100 transition-opacity pointer-events-none">
         <button onClick={handleExit} className="p-2 bg-black/60 rounded-full text-white hover:text-red-400 hover:bg-black/90 transition-all flex items-center gap-2 pointer-events-auto shadow-lg backdrop-blur-md border border-white/10">
-          <X className="w-5 h-5" /> <span className="font-bold">Exit</span>
+          <X className="w-5 h-5" /> <span className="font-bold hidden sm:inline">Exit</span>
         </button>
+        
+        <button onClick={openSaveModal} className="px-6 py-2 bg-black/60 rounded-full text-[#00f3ff] hover:bg-black/90 transition-all flex items-center gap-2 pointer-events-auto shadow-[0_0_15px_rgba(0,243,255,0.2)] backdrop-blur-md border border-[#00f3ff]/50 font-black tracking-widest uppercase">
+          <Save className="w-5 h-5" /> Save State
+        </button>
+
         <button onClick={toggleFullscreen} className="p-2 bg-black/60 rounded-full text-white hover:text-[#00f3ff] hover:bg-black/90 transition-all flex items-center gap-2 pointer-events-auto shadow-lg backdrop-blur-md border border-white/10">
-          <Maximize className="w-5 h-5" /> <span className="font-bold">Fullscreen</span>
+          <Maximize className="w-5 h-5" /> <span className="font-bold hidden sm:inline">Fullscreen</span>
         </button>
       </div>
 
