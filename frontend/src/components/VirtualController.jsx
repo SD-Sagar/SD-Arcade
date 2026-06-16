@@ -10,6 +10,11 @@ export default function VirtualController({ nostalgist, className = "absolute in
   const activeDirections = useRef(new Set());
   const pressedKeys = useRef(new Set()); // Track physical keyboard keys
   const turboIntervals = useRef({});
+  const nostalgistRef = useRef(nostalgist);
+
+  useEffect(() => {
+    nostalgistRef.current = nostalgist;
+  }, [nostalgist]);
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -27,42 +32,42 @@ export default function VirtualController({ nostalgist, className = "absolute in
   // --- Turbo Engine ---
   const startTurbo = useCallback((targetButton) => {
     if (turboIntervals.current[targetButton]) return;
-    if (nostalgist) nostalgist.pressDown(targetButton);
+    if (nostalgistRef.current) nostalgistRef.current.pressDown(targetButton);
     
     let isDown = true;
     turboIntervals.current[targetButton] = setInterval(() => {
-      if (!nostalgist) return;
+      if (!nostalgistRef.current) return;
       isDown = !isDown;
-      if (isDown) nostalgist.pressDown(targetButton);
-      else nostalgist.pressUp(targetButton);
+      if (isDown) nostalgistRef.current.pressDown(targetButton);
+      else nostalgistRef.current.pressUp(targetButton);
     }, 50);
-  }, [nostalgist]);
+  }, []);
 
   const stopTurbo = useCallback((targetButton) => {
     if (turboIntervals.current[targetButton]) {
       clearInterval(turboIntervals.current[targetButton]);
       delete turboIntervals.current[targetButton];
-      if (nostalgist) nostalgist.pressUp(targetButton);
+      if (nostalgistRef.current) nostalgistRef.current.pressUp(targetButton);
     }
-  }, [nostalgist]);
+  }, []);
 
   const triggerPress = useCallback((button) => {
-    if (!nostalgist) return;
+    if (!nostalgistRef.current) return;
     if (platform === 'NES' || platform === 'GBA') {
       if (button === 'x') { startTurbo('a'); return; }
       if (button === 'y') { startTurbo('b'); return; }
     }
-    nostalgist.pressDown(button);
-  }, [nostalgist, platform, startTurbo]);
+    nostalgistRef.current.pressDown(button);
+  }, [platform, startTurbo]);
 
   const triggerRelease = useCallback((button) => {
-    if (!nostalgist) return;
+    if (!nostalgistRef.current) return;
     if (platform === 'NES' || platform === 'GBA') {
       if (button === 'x') { stopTurbo('a'); return; }
       if (button === 'y') { stopTurbo('b'); return; }
     }
-    nostalgist.pressUp(button);
-  }, [nostalgist, platform, stopTurbo]);
+    nostalgistRef.current.pressUp(button);
+  }, [platform, stopTurbo]);
 
   // Global Keyboard Listener
   useEffect(() => {
@@ -124,7 +129,7 @@ export default function VirtualController({ nostalgist, className = "absolute in
   }, [nostalgist, config, triggerPress, triggerRelease]);
 
   const handleJoystickMove = (e) => {
-    if (!nostalgist) return;
+    if (!nostalgistRef.current) return;
     const threshold = 20; // Deadzone threshold
     const newDirections = new Set();
     
@@ -134,17 +139,17 @@ export default function VirtualController({ nostalgist, className = "absolute in
     if (e.x < -threshold) newDirections.add('left');
 
     newDirections.forEach(dir => {
-      if (!activeDirections.current.has(dir)) nostalgist.pressDown(dir);
+      if (!activeDirections.current.has(dir)) triggerPress(dir);
     });
     activeDirections.current.forEach(dir => {
-      if (!newDirections.has(dir)) nostalgist.pressUp(dir);
+      if (!newDirections.has(dir)) triggerRelease(dir);
     });
     activeDirections.current = newDirections;
   };
 
   const handleJoystickStop = () => {
-    if (!nostalgist) return;
-    activeDirections.current.forEach(dir => nostalgist.pressUp(dir));
+    if (!nostalgistRef.current) return;
+    activeDirections.current.forEach(dir => triggerRelease(dir));
     activeDirections.current.clear();
   };
 
@@ -159,7 +164,7 @@ export default function VirtualController({ nostalgist, className = "absolute in
       >
         {label}
       </button>
-      <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-[#00f3ff] font-mono font-bold bg-black/80 px-2 py-0.5 rounded border border-[#00f3ff]/30 pointer-events-none uppercase">
+      <span className="hidden md:block absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-[#00f3ff] font-mono font-bold bg-black/80 px-2 py-0.5 rounded border border-[#00f3ff]/30 pointer-events-none uppercase">
         {pcKey}
       </span>
     </div>
@@ -178,7 +183,7 @@ export default function VirtualController({ nostalgist, className = "absolute in
             onContextMenu={(e) => e.preventDefault()}
             className="w-24 h-10 rounded-full bg-gray-800/80 border border-white/20 text-white font-bold text-sm shadow-[0_0_10px_rgba(255,255,255,0.1)] active:scale-95 transition-transform select-none touch-none flex items-center justify-center gap-2"
           >
-            L <span className="text-[10px] text-[#00f3ff] font-mono border border-[#00f3ff]/30 px-1 rounded bg-black/50 uppercase">{config.shoulderL.keys.l}</span>
+            L <span className="hidden md:inline text-[10px] text-[#00f3ff] font-mono border border-[#00f3ff]/30 px-1 rounded bg-black/50 uppercase">{config.shoulderL.keys.l}</span>
           </button>
         </div>
 
@@ -191,7 +196,7 @@ export default function VirtualController({ nostalgist, className = "absolute in
             onContextMenu={(e) => e.preventDefault()}
             className="w-24 h-10 rounded-full bg-gray-800/80 border border-white/20 text-white font-bold text-sm shadow-[0_0_10px_rgba(255,255,255,0.1)] active:scale-95 transition-transform select-none touch-none flex items-center justify-center gap-2"
           >
-            R <span className="text-[10px] text-[#00f3ff] font-mono border border-[#00f3ff]/30 px-1 rounded bg-black/50 uppercase">{config.shoulderR.keys.r}</span>
+            R <span className="hidden md:inline text-[10px] text-[#00f3ff] font-mono border border-[#00f3ff]/30 px-1 rounded bg-black/50 uppercase">{config.shoulderR.keys.r}</span>
           </button>
         </div>
 
@@ -204,7 +209,7 @@ export default function VirtualController({ nostalgist, className = "absolute in
             move={handleJoystickMove} 
             stop={handleJoystickStop} 
           />
-          <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex gap-1 pointer-events-none">
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden md:flex gap-1 pointer-events-none">
             {['up','down','left','right'].map(k => (
               <span key={k} className="text-[10px] text-[#00f3ff] font-mono font-bold bg-black/80 px-1 rounded border border-[#00f3ff]/30 uppercase">
                 {config.joystick.keys[k]}
@@ -217,7 +222,7 @@ export default function VirtualController({ nostalgist, className = "absolute in
         <div className="absolute flex gap-4 pointer-events-auto" style={{ left: `${config.system.left}%`, top: `${config.system.top}%`, transform: `scale(${config.system.scale})` }}>
           {/* Select */}
           <div className="flex flex-col items-center gap-2">
-            <span className="text-[10px] text-[#00f3ff] font-mono border border-[#00f3ff]/30 px-1 rounded bg-black/50 uppercase">{config.system.keys.select}</span>
+            <span className="hidden md:block text-[10px] text-[#00f3ff] font-mono border border-[#00f3ff]/30 px-1 rounded bg-black/50 uppercase">{config.system.keys.select}</span>
             <button
               onPointerDown={(e) => { e.preventDefault(); triggerPress('select'); }}
               onPointerUp={(e) => { e.preventDefault(); triggerRelease('select'); }}
@@ -230,7 +235,7 @@ export default function VirtualController({ nostalgist, className = "absolute in
           </div>
           {/* Start */}
           <div className="flex flex-col items-center gap-2">
-            <span className="text-[10px] text-[#00f3ff] font-mono border border-[#00f3ff]/30 px-1 rounded bg-black/50 uppercase">{config.system.keys.start}</span>
+            <span className="hidden md:block text-[10px] text-[#00f3ff] font-mono border border-[#00f3ff]/30 px-1 rounded bg-black/50 uppercase">{config.system.keys.start}</span>
             <button
               onPointerDown={(e) => { e.preventDefault(); triggerPress('start'); }}
               onPointerUp={(e) => { e.preventDefault(); triggerRelease('start'); }}

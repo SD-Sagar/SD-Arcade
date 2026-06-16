@@ -150,8 +150,8 @@ function EmulatorView() {
         </button>
       </div>
 
-      <div ref={containerRef} className="flex-1 flex items-center justify-center bg-black w-full h-full relative p-4">
-        <div className="relative w-[1000px] h-[750px] max-w-full max-h-full mx-auto bg-black border border-white/10 rounded-lg overflow-hidden shadow-[0_0_20px_rgba(0,243,255,0.2)]">
+      <div ref={containerRef} className="flex-1 flex items-center justify-center w-full h-full relative p-4 overflow-hidden">
+        <div className="relative w-full max-w-[1000px] aspect-[4/3] mx-auto bg-black border border-white/10 rounded-lg overflow-hidden shadow-[0_0_20px_rgba(0,243,255,0.2)]">
           <canvas 
             ref={canvasRef} 
             className="w-full h-full object-contain bg-black pointer-events-none" 
