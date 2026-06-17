@@ -41,6 +41,7 @@ function EmulatorView() {
   const nostalgistRef = useRef(null); // Need ref for socket callbacks
   const videoRef = useRef(null);
   const peerConnectionRef = useRef(null);
+  const dataChannelRef = useRef(null);
   const [webrtcStatus, setWebrtcStatus] = useState('');
 
   useEffect(() => {
@@ -58,6 +59,36 @@ function EmulatorView() {
 
     if (initLocked.current) return;
     initLocked.current = true;
+
+    // Monkey-patch AudioContext and AudioNode to reliably capture emulator audio for WebRTC
+    if (!window.__audioPatched && role === 'host' && multiplayer) {
+      window.__audioPatched = true;
+      
+      const OriginalAudioContext = window.AudioContext || window.webkitAudioContext;
+      if (OriginalAudioContext && !OriginalAudioContext.__isPatched) {
+        window.AudioContext = function(...args) {
+          const ctx = new OriginalAudioContext(...args);
+          if (!window.__globalMediaStreamDest) {
+            window.__globalMediaStreamDest = ctx.createMediaStreamDestination();
+          }
+          ctx.__mediaStreamDest = window.__globalMediaStreamDest;
+          return ctx;
+        };
+        window.AudioContext.__isPatched = true;
+      }
+
+      const originalConnect = AudioNode.prototype.connect;
+      AudioNode.prototype.connect = function (destination, ...args) {
+        if (destination === this.context.destination) {
+          if (!this.context.__mediaStreamDest) {
+            this.context.__mediaStreamDest = window.__globalMediaStreamDest || this.context.createMediaStreamDestination();
+            window.__globalMediaStreamDest = this.context.__mediaStreamDest;
+          }
+          originalConnect.call(this, this.context.__mediaStreamDest);
+        }
+        return originalConnect.call(this, destination, ...args);
+      };
+    }
 
     startTimeRef.current = Date.now();
     let blobUrl = null;
@@ -78,7 +109,14 @@ function EmulatorView() {
         try {
           const captureFn = canvasRef.current.captureStream || canvasRef.current.mozCaptureStream;
           if (captureFn) {
-            const stream = captureFn.call(canvasRef.current, 30);
+            const stream = captureFn.call(canvasRef.current, 60); // 60 FPS for smoother remote play
+            
+            // Add captured audio track to the video stream
+            if (window.__globalMediaStreamDest) {
+              const audioTracks = window.__globalMediaStreamDest.stream.getAudioTracks();
+              audioTracks.forEach(track => stream.addTrack(track));
+            }
+            
             stream.getTracks().forEach(track => pc.addTrack(track, stream));
           } else {
             console.warn('captureStream is not supported by this browser.');
@@ -87,22 +125,45 @@ function EmulatorView() {
           console.error('Failed to capture canvas stream:', e);
         }
 
-        const createAndSendOffer = async () => {
+        // Create WebRTC Data Channel for ultra-low latency inputs
+        const dataChannel = pc.createDataChannel('inputs');
+        dataChannel.onmessage = (event) => {
+          if (!nostalgistRef.current) return;
           try {
+            const { button, state, playerNum } = JSON.parse(event.data);
+            if (state === 'down') {
+              nostalgistRef.current.pressDown({ button, player: playerNum });
+            } else {
+              nostalgistRef.current.pressUp({ button, player: playerNum });
+            }
+          } catch (err) {
+            console.error('Data channel error:', err);
+          }
+        };
+
+        const createAndSendOffer = async () => {
+          if (pc.signalingState === 'closed') return;
+          try {
+            if (pc.signalingState === 'have-local-offer' && pc.localDescription) {
+              // Resend existing offer if already created
+              newSocket.emit('webrtc_offer', { roomId, offer: pc.localDescription });
+              return;
+            }
+            
             setWebrtcStatus('Creating Offer...');
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             newSocket.emit('webrtc_offer', { roomId, offer });
           } catch (e) {
             console.error('Error creating offer', e);
-            setWebrtcStatus('Error Creating Offer');
+            if (pc.signalingState !== 'closed') {
+              setWebrtcStatus('Error Creating Offer');
+            }
           }
         };
 
-        // Send offer immediately for any waiting clients
-        createAndSendOffer();
-
-        // Send offer when joiner explicitly says they are ready
+        // Emit that host is ready, and create offer if Joiner says they are ready
+        newSocket.emit('webrtc_host_ready', { roomId });
         newSocket.on('webrtc_client_ready', createAndSendOffer);
         newSocket.on('user_joined_lobby', createAndSendOffer);
 
@@ -121,13 +182,18 @@ function EmulatorView() {
       } else {
         // Client receives tracks
         pc.ontrack = (event) => {
-          if (videoRef.current) {
-            videoRef.current.srcObject = event.streams[0];
-            setWebrtcStatus('Stream Connected');
-            
-            // Auto-play might fail if unmuted, ensure it tries to play
-            videoRef.current.play().catch(e => console.error("Autoplay failed:", e));
+          if (videoRef.current && event.streams && event.streams[0]) {
+            if (videoRef.current.srcObject !== event.streams[0]) {
+              videoRef.current.srcObject = event.streams[0];
+              setWebrtcStatus('Stream Connected');
+              videoRef.current.play().catch(e => console.error("Autoplay failed:", e));
+            }
           }
+        };
+
+        // Listen for Data Channel
+        pc.ondatachannel = (event) => {
+          dataChannelRef.current = event.channel;
         };
 
         newSocket.on('webrtc_offer_receive', async ({ offer }) => {
@@ -146,7 +212,23 @@ function EmulatorView() {
         // Notify host we are ready for the offer
         newSocket.emit('join_room_lobby', { roomId, userId: 'emulator_client', username: role });
         newSocket.emit('webrtc_client_ready', { roomId });
+        
+        // If host was already ready, this will trigger them
+        newSocket.on('webrtc_host_ready', () => {
+          newSocket.emit('webrtc_client_ready', { roomId });
+        });
       }
+
+      // Both Host and Client should handle connection drops
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+           setWebrtcStatus('Connection Lost');
+           if (role === 'client') {
+             alert('Connection to Host lost.');
+             window.location.href = `/multiplayer/lobby?roomId=${roomId}`;
+           }
+        }
+      };
 
       newSocket.on('webrtc_ice_candidate_receive', async ({ candidate }) => {
         try {
@@ -173,24 +255,25 @@ function EmulatorView() {
           }
         }
 
-        const res = await api.get('/roms');
-        const metadata = res.data.find((r) => r.romHash === hash);
+        // If Joiner, they don't have the ROM locally. We use the platform passed in the URL.
+        const urlPlatform = searchParams.get('platform');
         
-        if (!metadata) {
-          setError('ROM metadata not found.');
-          return;
+        let metadata = null;
+        if (role !== 'client') {
+          const res = await api.get('/roms');
+          metadata = res.data.find((r) => r.romHash === hash);
+          if (!metadata) {
+            setError('ROM metadata not found. Please re-upload in Dashboard.');
+            return;
+          }
+          setPlatform(metadata.platform);
+        } else if (urlPlatform) {
+          setPlatform(urlPlatform);
         }
-
-        setPlatform(metadata.platform);
 
         if (role === 'client') {
           // Client skips emulation and just sets up WebRTC
           if (newSocket) setupWebRTC(newSocket);
-          
-          newSocket.on('user_left_lobby', () => {
-            alert('Host disconnected from the game.');
-            window.location.href = `/multiplayer/lobby?roomId=${roomId}`;
-          });
           return;
         }
 
@@ -236,15 +319,7 @@ function EmulatorView() {
         if (multiplayer && newSocket && role === 'host') {
           setupWebRTC(newSocket);
 
-          newSocket.on('netplay_signal_receive', ({ signal }) => {
-            if (!signal || !nostalgistRef.current) return;
-            const { button, state, playerNum } = signal;
-            if (state === 'down') {
-              nostalgistRef.current.pressDown({ button, player: playerNum });
-            } else {
-              nostalgistRef.current.pressUp({ button, player: playerNum });
-            }
-          });
+
 
           newSocket.on('netplay_pause_receive', () => {
             if (nostalgistRef.current) nostalgistRef.current.pause();
@@ -252,10 +327,6 @@ function EmulatorView() {
 
           newSocket.on('netplay_resume_receive', () => {
             if (nostalgistRef.current) nostalgistRef.current.resume();
-          });
-          
-          newSocket.on('user_left_lobby', () => {
-             setWebrtcStatus('Player 2 Disconnected');
           });
         }
 
@@ -569,14 +640,10 @@ function EmulatorView() {
           platform={platform} 
           playerNum={multiplayer ? (role === 'host' ? 1 : 2) : 1}
           onInput={({ button, state }) => {
-            if (socket && multiplayer && roomId) {
-              const playerNum = role === 'host' ? 1 : 2;
-              const targetUserId = 'all'; // broadcast to everyone in room
-              socket.emit('netplay_signal', { 
-                roomId, 
-                targetUserId, 
-                signal: { button, state, playerNum } 
-              });
+            if (multiplayer && role === 'client') {
+              if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
+                dataChannelRef.current.send(JSON.stringify({ button, state, playerNum: 2 }));
+              }
             }
           }}
         />
