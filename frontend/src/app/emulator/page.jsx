@@ -5,7 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { getRomLocally } from '../../lib/db';
 import api from '../../lib/axios';
-import { Maximize, Save, LogOut, Settings, RotateCcw } from 'lucide-react';
+import { Save, UploadCloud, Download, Loader2, X, Settings, RotateCcw, Maximize, LogOut, Trash2 } from 'lucide-react';
+import { getControllerConfig } from '@/utils/controllerConfig';
 import { Nostalgist } from 'nostalgist';
 import VirtualController from '../../components/VirtualController';
 import { io } from 'socket.io-client';
@@ -171,6 +172,16 @@ function EmulatorView() {
           }
         }
 
+        const res = await api.get('/roms');
+        const metadata = res.data.find((r) => r.romHash === hash);
+        
+        if (!metadata) {
+          setError('ROM metadata not found.');
+          return;
+        }
+
+        setPlatform(metadata.platform);
+
         if (role === 'client') {
           // Client skips emulation and just sets up WebRTC
           if (newSocket) setupWebRTC(newSocket);
@@ -189,16 +200,6 @@ function EmulatorView() {
           return;
         }
 
-        const res = await api.get('/roms');
-        const metadata = res.data.find((r) => r.romHash === hash);
-        
-        if (!metadata) {
-          setError('ROM metadata not found.');
-          return;
-        }
-
-        setPlatform(metadata.platform);
-
         let core = 'fceumm'; // NES
         if (metadata.platform === 'SNES') core = 'snes9x';
         if (metadata.platform === 'GBA') core = 'mgba';
@@ -210,6 +211,22 @@ function EmulatorView() {
           core: core,
           rom: blobUrl,
           element: canvasRef.current,
+          retroarchConfig: {
+            // Map Player 2 to arbitrary UNIQUE keyboard keys so Nostalgist's pressDown(player: 2) can translate them
+            // They must not overlap with Player 1's defaults (arrows, z, x, a, s, q, w, enter, shift)
+            input_player2_up: "i",
+            input_player2_down: "k",
+            input_player2_left: "j",
+            input_player2_right: "l",
+            input_player2_a: "v",
+            input_player2_b: "b",
+            input_player2_x: "n",
+            input_player2_y: "m",
+            input_player2_l: "u",
+            input_player2_r: "o",
+            input_player2_start: "p",
+            input_player2_select: "y",
+          }
         });
 
         setNostalgistInst(nInst);
@@ -222,9 +239,9 @@ function EmulatorView() {
             if (!signal || !nostalgistRef.current) return;
             const { button, state, playerNum } = signal;
             if (state === 'down') {
-              nostalgistRef.current.pressDown(button, playerNum);
+              nostalgistRef.current.pressDown({ button, player: playerNum });
             } else {
-              nostalgistRef.current.pressUp(button, playerNum);
+              nostalgistRef.current.pressUp({ button, player: playerNum });
             }
           });
 
