@@ -49,7 +49,7 @@ export default function LandingPage() {
           { icon: Gamepad2, title: "Browser-Based Retro Gaming", desc: "Play your favorite classics directly in the browser with no downloads required." },
           { icon: Library, title: "Personal Game Library", desc: "Build and organize your personal retro game collection effortlessly." },
           { icon: Cloud, title: "Continue Anywhere", desc: "Your save states and library metadata sync across all your devices seamlessly." },
-          { icon: Users, title: "Future Multiplayer Support", desc: "Architecture prepared for upcoming netplay and multiplayer lobbies." }
+          { icon: Users, title: "P2P Multiplayer", desc: "Seamless low-latency netplay using WebRTC and WebSocket signaling." }
         ].map((feature, i) => (
           <motion.div
             key={i}
